@@ -31,6 +31,34 @@ Example configuration :
   }
 ```
 
+### Example Home Assistant MQTT sensor configuration
+
+``` yaml
+sensor:
+  - platform: mqtt
+    unique_id: entrance_zone_phase1_voltage
+    name: Entrance Zone Phase1 Voltage
+    state_topic: wiser/Entrance/MeterInstantData
+    value_template: >-
+        {{ value_json.voltageAN }}
+    expire_after: 120
+    device_class: voltage
+    state_class: measurement
+    unit_of_measurement: V
+
+  - platform: mqtt
+    unique_id: entrance_zone_phase1_current
+    name: Entrance Zone Phase1 Current
+    state_topic: wiser/Entrance/MeterInstantData
+    value_template: >-
+        {{ value_json.currentA }}
+    expire_after: 120
+    device_class: current
+    state_class: measurement
+    unit_of_measurement: A
+
+```
+
 
 ## Example output
 
