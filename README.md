@@ -85,3 +85,7 @@ Examples:
   "channel": 0
 }
 ```
+
+## Feedback
+If you have any issue please file a bug report. If you have suggestions or just want to say thank you, then you can always send me something. Either hardware for testing or just a simple thank-you email.
+
