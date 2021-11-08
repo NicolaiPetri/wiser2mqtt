@@ -38,6 +38,7 @@ namespace Wiser2Mqtt
 
         private HttpClient CreateCustomHttpClient()
         {
+#if UNUSED
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             var httpHandler = new SocketsHttpHandler();
             httpHandler.SslOptions = new SslClientAuthenticationOptions
@@ -45,13 +46,12 @@ namespace Wiser2Mqtt
                 ApplicationProtocols = new List<SslApplicationProtocol> {
                     SslApplicationProtocol.Http11
                 },
-                TargetHost = "192.168.1.214",
                 AllowRenegotiation = false,
                 CertificateRevocationCheckMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.NoCheck,
-                EncryptionPolicy = EncryptionPolicy.AllowNoEncryption,
+//                EncryptionPolicy = EncryptionPolicy.AllowNoEncryption,
                 EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12,
                 RemoteCertificateValidationCallback = delegate { return true; },
-                CipherSuitesPolicy = new CipherSuitesPolicy(new[]
+/*                CipherSuitesPolicy = new CipherSuitesPolicy(new[]
                 {
                         TlsCipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
                         TlsCipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
@@ -60,12 +60,15 @@ namespace Wiser2Mqtt
                        
 //                        TlsCipherSuite.ECDHE-ECDSA-AES128-GCM-SHA256
                 })
+*/
             };
+#endif
             var http2Handler = new HttpClientHandler
             {
                 CheckCertificateRevocationList = false,
                 ClientCertificateOptions = ClientCertificateOption.Manual,
-                SslProtocols = System.Security.Authentication.SslProtocols.Tls12
+                SslProtocols = System.Security.Authentication.SslProtocols.Tls12,
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
             };
             var client = new HttpClient(http2Handler);
 
@@ -76,10 +79,6 @@ namespace Wiser2Mqtt
 
         private async Task DoInventory()
         {
-            var rsp = CurlWrapper.DoCurlRequest($"https://{_options.Host}/rsa1/WirelessMeter/instances", headers: new[] {
-                $"Authorization: {_client.DefaultRequestHeaders.Authorization}"
-               }
-            );
             var respJson = await FetchDataArray("/rsa1/WirelessMeter/instances");
             foreach (JObject meter in respJson)
             {
