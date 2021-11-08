@@ -27,29 +27,8 @@ namespace Wiser2Mqtt
             .Build();
             var factory = new MqttFactory();
             _mqttClient = factory.CreateMqttClient();
-            _mqttClient.UseConnectedHandler(async e =>
-            {
-                Console.WriteLine("### CONNECTED WITH SERVER ###");
-
-                // Subscribe to a topic
-                //   await mqttClient.SubscribeAsync(new MqttClientSubscribeOptionsBuilder().WithTopicFilter("#").Build());
-
-                Console.WriteLine("### SUBSCRIBED ###");
-            });
             await _mqttClient.ConnectAsync(options, CancellationToken.None);
 
-            _mqttClient.UseApplicationMessageReceivedHandler(e =>
-            {
-                if (e.ApplicationMessage.Retain == false)
-                {
-                    Console.WriteLine("### RECEIVED APPLICATION MESSAGE ###");
-                    Console.WriteLine($"+ Topic = {e.ApplicationMessage.Topic}");
-                    Console.WriteLine($"+ Payload = {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)}");
-                    Console.WriteLine($"+ QoS = {e.ApplicationMessage.QualityOfServiceLevel}");
-                    Console.WriteLine($"+ Retain = {e.ApplicationMessage.Retain}");
-                    Console.WriteLine();
-                }
-            });
         }
         public async Task PublishMessage(string topic, string payload)
         {

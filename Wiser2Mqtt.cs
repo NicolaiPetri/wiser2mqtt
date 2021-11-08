@@ -27,28 +27,18 @@ namespace Wiser2Mqtt
                                                         WiserOptions.ConfigKey));
                     services.Configure<MqttOptions>(Configuration.GetSection(
                                                         MqttOptions.ConfigKey));
+                    services.AddHttpClient<HttpClient>("wiser", a => new HttpClient());
 
-                    services.AddHttpClient("wiser")
-                        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-                        {
-                            ServerCertificateCustomValidationCallback = ValidateServerCertificate
-                        });
                     services.AddSingleton<MqttHelper>();
                     services.AddHostedService<Worker>();
                 });
 
-    
+
 
         private static bool ValidateServerCertificate(HttpRequestMessage arg1, X509Certificate2 arg2, X509Chain arg3, SslPolicyErrors arg4)
         {
             return true;
-//            throw new NotImplementedException();
         }
 
-        /*                    ;.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-                                       {
-                                           ServerCertificateCustomValidationCallback = ValidateServerCertificattion
-                                       });
-          */
     }
 }
