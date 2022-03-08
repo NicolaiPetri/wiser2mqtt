@@ -4,3 +4,5 @@
 
 /bin
 /obj
+/.vs/
+/wiser2mqtt.csproj.user
