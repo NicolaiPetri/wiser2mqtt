@@ -11,6 +11,8 @@ namespace Wiser2Mqtt
         public const string ConfigKey = "Mqtt";
         public string Host { get; set; }
         public int Port { get; set; }
-
+        public string Username { get; set; }
+        public string Password { get; set; }
+        public bool HassAutoDiscovery { get; set; }
     }
 }
