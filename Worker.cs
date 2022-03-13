@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using wiser2mqtt;
 
@@ -22,16 +23,18 @@ namespace Wiser2Mqtt
         private readonly HttpClient _client;
         private readonly MqttHelper _mqtt;
         private readonly Dictionary<string, JObject> _meterDetails = new();
-        private readonly WiserOptions _options;
-        public Worker(ILogger<Worker> logger, MqttHelper mqtt, IOptions<WiserOptions> wiserOptions)
+        private readonly WiserOptions _wiserOptions;
+        private readonly MqttOptions _mqttOptions;
+        public Worker(ILogger<Worker> logger, MqttHelper mqtt, IOptions<WiserOptions> wiserOptions, IOptions<MqttOptions> mqttOptions)
         {
-            _options = wiserOptions.Value;
+            _wiserOptions = wiserOptions.Value;
+            _mqttOptions = mqttOptions.Value;
             _logger = logger;
             _client = CreateCustomHttpClient();
-            _client.BaseAddress = new Uri($"https://{_options.Host}");
+            _client.BaseAddress = new Uri($"https://{_wiserOptions.Host}");
             _client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(
             ASCIIEncoding.ASCII.GetBytes(
-               $"{_options.Username}:{_options.Password}")));
+               $"{_wiserOptions.Username}:{_wiserOptions.Password}")));
             _mqtt = mqtt;
             DoInventory().Wait();
         }
@@ -84,6 +87,11 @@ namespace Wiser2Mqtt
             {
                 _meterDetails.Add(meter["slaveId"].ToString(), meter);
             }
+
+            if (_mqttOptions.HassAutoDiscovery)
+            {
+                await SendAutoDiscoveryTopic();
+            }
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -93,7 +101,7 @@ namespace Wiser2Mqtt
                 _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
                 await FetchData();
 
-                await Task.Delay(_options.UpdateInterval * 1000, stoppingToken);
+                await Task.Delay(_wiserOptions.UpdateInterval * 1000, stoppingToken);
             }
         }
 
@@ -124,7 +132,7 @@ namespace Wiser2Mqtt
                 string respBody;
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
-                    respBody = CurlWrapper.DoCurlRequest($"https://{_options.Host}{url}", 
+                    respBody = CurlWrapper.DoCurlRequest($"https://{_wiserOptions.Host}{url}", 
                         headers: new[] {
                             $"Authorization: {_client.DefaultRequestHeaders.Authorization}"
                         }
@@ -152,7 +160,7 @@ namespace Wiser2Mqtt
                 string respBody;
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
-                    respBody = CurlWrapper.DoCurlRequest($"https://{_options.Host}{url}",
+                    respBody = CurlWrapper.DoCurlRequest($"https://{_wiserOptions.Host}{url}",
                         headers: new[] {
                             $"Authorization: {_client.DefaultRequestHeaders.Authorization}"
                         }
@@ -171,6 +179,64 @@ namespace Wiser2Mqtt
             {
                 Console.WriteLine($"EX: {e}");
                 throw;
+            }
+        }
+
+        private async Task SendAutoDiscoveryTopic()
+        {
+            foreach (var meter in _meterDetails.Values)
+            {
+                var device = new
+                {
+                    identifiers = new[] { meter["serialNumber"] },
+                    manufacturer = "Schneider Electric",
+                    model = meter["productType"],
+                    name = meter["zone"],
+                    sw_version = meter["swVersion"]
+                };
+                var payload = JsonConvert.SerializeObject(new
+                {
+                    name = $"{meter["zone"]} Accumulated Power",
+                    state_topic = $"wiser/{meter["zone"]}/MeterCumulatedData",
+                    device_class = "energy",
+                    enabled_by_default = true,
+                    json_attributes_topic = $"wiser/{meter["zone"]}/MeterCumulatedData",
+                    state_class = "total_increasing",
+                    unique_id = $"wiser_{meter["serialNumber"]}_accumulated",
+                    unit_of_measurement = "kWh",
+                    attributes = new
+                    {
+                        last_reset = "1970-01-01T00:00:00+00:00"
+                    },
+                    value_template = "{{ value_json.energyTActive | float / 1000 }}",
+                    expire_after = _wiserOptions.UpdateInterval * 2,
+                    device
+                }, Formatting.Indented);
+                await _mqtt.PublishMessage($"homeassistant/sensor/{meter["serialNumber"]}/accumulated/config", payload, true);
+
+                // TODO: I only have the 3-phase device so far, so I'm not 100% sure if this works for the smaller ones. Needs confirmation
+                var phasePrefix = "PhaseSeq";
+                // Example value of phSequence: PhaseSeqABC - I'm guessing this indicates there will be measurements for phase A, B and C.
+                var phases = meter["phSequence"].ToString().Substring(phasePrefix.Length);
+                foreach (var phase in phases)
+                {
+                    payload = JsonConvert.SerializeObject(new
+                    {
+                        name = $"{meter["zone"]} Power {phase}",
+                        state_topic = $"wiser/{meter["zone"]}/MeterInstantData",
+                        device_class = "power",
+                        enabled_by_default = true,
+                        json_attributes_topic = $"wiser/{meter["zone"]}/MeterInstantData",
+                        state_class = "measurement",
+                        unique_id = $"wiser_{meter["serialNumber"]}_power_{phase}",
+                        unit_of_measurement = "W",
+                        value_template = "{{ value_json.power" + phase + " }}",
+                        expire_after = _wiserOptions.UpdateInterval * 2,
+                        device
+                    }, Formatting.Indented);
+                    await _mqtt.PublishMessage($"homeassistant/sensor/{meter["serialNumber"]}/instant-{phase}/config", payload, true);
+                }
+                
             }
         }
     }

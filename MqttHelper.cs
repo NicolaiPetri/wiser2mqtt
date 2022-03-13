@@ -34,9 +34,9 @@ namespace Wiser2Mqtt
             await _mqttClient.ConnectAsync(options, CancellationToken.None);
 
         }
-        public async Task PublishMessage(string topic, string payload)
+        public async Task PublishMessage(string topic, string payload, bool retain = false)
         {
-            await _mqttClient.PublishAsync(topic, payload);
+            await _mqttClient.PublishAsync(topic, payload, retain);
 
         }
     }
