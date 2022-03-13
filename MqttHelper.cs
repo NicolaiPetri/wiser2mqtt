@@ -22,17 +22,21 @@ namespace Wiser2Mqtt
         }
         public async Task Initialize()
         {
-            var options = new MqttClientOptionsBuilder()
-                .WithTcpServer(_options.Host, _options.Port) // Port is optional
-            .Build();
+            var builder = new MqttClientOptionsBuilder()
+                .WithTcpServer(_options.Host, _options.Port);
+            if (!string.IsNullOrEmpty(_options.Username))
+            {
+                builder = builder.WithCredentials(_options.Username, _options.Password);
+            }
+            var options = builder.Build();
             var factory = new MqttFactory();
             _mqttClient = factory.CreateMqttClient();
             await _mqttClient.ConnectAsync(options, CancellationToken.None);
 
         }
-        public async Task PublishMessage(string topic, string payload)
+        public async Task PublishMessage(string topic, string payload, bool retain = false)
         {
-            await _mqttClient.PublishAsync(topic, payload);
+            await _mqttClient.PublishAsync(topic, payload, retain);
 
         }
     }

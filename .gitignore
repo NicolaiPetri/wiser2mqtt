@@ -6,3 +6,4 @@
 /obj
 /.vs/
 /wiser2mqtt.csproj.user
+/.vscode

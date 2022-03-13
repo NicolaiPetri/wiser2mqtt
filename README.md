@@ -21,7 +21,10 @@ Example configuration :
 {
   "Mqtt": {
     "Host": "10.0.0.10",
-    "Port": 1883
+    "Port": 1883,
+    "Username": "user",
+    "Password": "verysecret",
+    "HassAutoDiscovery": true
   },
   "Wiser": {
     "Host": "10.0.0.11",
