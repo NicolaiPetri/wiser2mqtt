@@ -1,3 +1,6 @@
+# UPDATE
+This project is now archieved - I suggest skipping using the Wiser IP Module and use an (open) zigbee integration instead, like the Zigbee2Mqtt or similar.
+
 # Wiser2Mqtt
 
 **Exposes Wiser power monitor metrics to MQTT**
